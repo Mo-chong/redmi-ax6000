@@ -26,9 +26,9 @@ git clone https://github.com/sbwml/luci-app-mosdns -b v5 package/mosdns
 # svn export https://github.com/immortalwrt/packages/trunk/net/adguardhome feeds/packages/net/adguardhome
 
 # 3. Argon 主题: 一个流行的 LuCI 界面主题
-rm -rf feeds/luci/themes/luci-theme-argon
-git clone -b 18.06 https://github.com/jerrykuku/luci-theme-argon.git feeds/luci/themes/luci-theme-argon
-git clone https://github.com/jerrykuku/luci-app-argon-config.git package/luci-app-argon-config
+# rm -rf feeds/luci/themes/luci-theme-argon
+# git clone -b 18.06 https://github.com/jerrykuku/luci-theme-argon.git feeds/luci/themes/luci-theme-argon
+# git clone https://github.com/jerrykuku/luci-app-argon-config.git package/luci-app-argon-config
 
 # 4. Passwall: 科学上网插件 (如果你需要)
 # git clone https://github.com/xiaorouji/openwrt-passwall-packages.git package/passwall-packages
