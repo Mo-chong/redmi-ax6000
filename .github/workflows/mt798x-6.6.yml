@@ -94,16 +94,15 @@ jobs:
         cd openwrt
         $GITHUB_WORKSPACE/$DIY_P2_SH
 
-    # 【这是正确的位置！】
-    # 必须放在 "Load custom feeds" 之后
-    # 这样 .config 和 feeds.conf.default 才都存在
+    # 【6.6 的最终修正版本】
     - name: Cache build directories (6.6)
       uses: actions/cache@v4
       with:
         path: |
           /workdir/openwrt/dl
           /workdir/openwrt/staging_dir
-        key: ${{ runner.os }}-openwrt-6.6-${{ hashFiles('/workdir/openwrt/.config', '/workdir/openwrt/feeds.conf.default') }}
+        # 【修正】使用相对路径 'openwrt/'
+        key: ${{ runner.os }}-openwrt-6.6-${{ hashFiles('openwrt/.config', 'openwrt/feeds.conf.default') }}
         restore-keys: |
           ${{ runner.os }}-openwrt-6.6-
 
