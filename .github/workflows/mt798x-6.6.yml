@@ -82,19 +82,6 @@ jobs:
         cd openwrt
         $GITHUB_WORKSPACE/$DIY_P1_SH    
 
-    # 【新添加的缓存步骤】
-    # 放在 "Load custom configuration" 之后, "Install feeds" 之前
-    # 这样 key 就可以使用 /workdir/openwrt/.config 文件来计算哈希值
-    - name: Cache build directories
-      uses: actions/cache@v4
-      with:
-        path: |
-          /workdir/openwrt/dl
-          /workdir/openwrt/staging_dir
-        key: ${{ runner.os }}-openwrt-6.6-${{ hashFiles('/workdir/openwrt/.config', '/workdir/openwrt/feeds.conf.default') }}
-        restore-keys: |
-          ${{ runner.os }}-openwrt-6.6-
-
     - name: Install feeds
       run: |
         cd openwrt && ./scripts/feeds install -a
@@ -107,6 +94,18 @@ jobs:
         cd openwrt
         $GITHUB_WORKSPACE/$DIY_P2_SH
 
+    # 【这是正确的位置！】
+    # 必须放在 "Load custom feeds" 之后
+    # 这样 .config 和 feeds.conf.default 才都存在
+    - name: Cache build directories (6.6)
+      uses: actions/cache@v4
+      with:
+        path: |
+          /workdir/openwrt/dl
+          /workdir/openwrt/staging_dir
+        key: ${{ runner.os }}-openwrt-6.6-${{ hashFiles('/workdir/openwrt/.config', '/workdir/openwrt/feeds.conf.default') }}
+        restore-keys: |
+          ${{ runner.os }}-openwrt-6.6-
 
     - name: SSH connection to Actions
       # ... (此步骤及以下所有步骤保持不变) ...
