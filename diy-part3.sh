@@ -1,38 +1,26 @@
 #!/bin/bash
 #
-# https://github.com/P3TERX/Actions-OpenWrt
-# File name: diy-part1.sh
-# Description: OpenWrt DIY script part 1 (Before Update feeds)
-#
 # Copyright (c) 2019-2024 P3TERX <https://p3terx.com>
 #
-# This is free software, licensed under the MIT License.
-# See /LICENSE for more information.
-#
+# 清理掉旧的、冲突的 feed 定义
+sed -i '/kenzok8/d' feeds.conf.default
 
-# Uncomment a feed source
-#sed -i 's/^#\(.*helloworld\)/\1/' feeds.conf.default
-# sed -i '1i src-git danshui https://github.com/281677160/openwrt-package.git;immortalwrt' feeds.conf.default
-# sed -i '2i src-git dstheme https://github.com/281677160/openwrt-package.git;Theme2' feeds.conf.default
-#echo 'src-git alist https://github.com/sbwml/luci-app-alist' >>feeds.conf.default
-#echo 'src-git passwall https://github.com/xiaorouji/openwrt-passwall' >>feeds.conf.default
+# 添加你需要的独立插件源
+# MosDNS
+git clone https://github.com/sbwml/luci-app-mosdns -b v5 package/mosdns
+git clone https://github.com/sbwml/v2ray-geodata package/v2ray-geodata
 
-# Add a feed source
-#echo 'src-git helloworld https://github.com/fw876/helloworld' >>feeds.conf.default
-# echo 'src-git passwall https://github.com/xiaorouji/openwrt-passwall' >>feeds.conf.default
-# echo 'src-git kenzo https://github.com/kenzok8/openwrt-packages' >>feeds.conf.default   
-# echo 'src-git small https://github.com/kenzok8/small' >>feeds.conf.default
-# git clone https://github.com/sbwml/luci-app-mosdns -b v5 package/mosdns
-# git clone https://github.com/sbwml/v2ray-geodata package/v2ray-geodata
+# AdGuardHome - immortalwrt/packages 中通常自带，无需额外添加
+# 如果编译时找不到 adguardhome，再取消下面这行的注释
+# svn export https://github.com/immortalwrt/packages/trunk/net/adguardhome feeds/packages/net/adguardhome
 
-# add alist
-# rm -rf feeds/packages/net/alist
-# rm -rf feeds/luci/applications/luci-app-alist
-# git clone https://github.com/sbwml/luci-app-alist feeds/alist
-# mv ./feeds/alist/alist ./feeds/packages/net
-# mv ./feeds/alist/luci-app-alist feeds/luci/applications/
-# rm -rf feeds/alist
+# Argon 主题 (通常也自带，无需添加)
+# 如果需要最新版，可以取消注释
+# rm -rf feeds/luci/themes/luci-theme-argon
+# git clone -b 18.06 https://github.com/jerrykuku/luci-theme-argon.git feeds/luci/themes/luci-theme-argon
+# git clone https://github.com/jerrykuku/luci-app-argon-config.git package/luci-app-argon-config
 
-# Add kenzok8's feed source
-echo 'src-git kenzo https://github.com/kenzok8/openwrt-packages' >>feeds.conf.default
-echo 'src-git small https://github.com/kenzok8/small' >>feeds.conf.default
+# 其他你可能需要的插件，都用类似 'git clone' 的方式独立添加
+# 例如添加 Passwall (如果需要)
+# git clone https://github.com/xiaorouji/openwrt-passwall-packages.git package/passwall-packages
+# git clone https://github.com/xiaorouji/openwrt-passwall.git package/passwall
