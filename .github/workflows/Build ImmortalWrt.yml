@@ -92,7 +92,24 @@ jobs:
       run: |
           cd openwrt
           ./scripts/feeds update -a 
+    # 新增步骤：确保克隆前目标目录是干净的
+    - name: Clean workdir before clone
+      working-directory: /workdir
+      run: |
+        echo "Cleaning /workdir/openwrt before cloning..."
+        if [ -d "openwrt" ]; then
+          echo "'openwrt' directory exists (likely from cache restore), removing it forcefully."
+          rm -rf openwrt
+        else
+          echo "'openwrt' directory does not exist, proceeding."
+        fi
 
+    - name: Clone source code
+      working-directory: /workdir
+      run: |
+        df -hT $PWD
+        git clone --depth=1 $REPO_URL -b $REPO_BRANCH openwrt
+        ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
 
     - name: Load custom configuration
       run: |
