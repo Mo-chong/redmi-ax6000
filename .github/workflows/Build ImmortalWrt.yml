@@ -59,7 +59,17 @@ jobs:
         sudo timedatectl set-timezone "$TZ"
         sudo mkdir -p /workdir
         sudo chown $USER:$GROUPS /workdir
+    - name: Set up Go
+      uses: actions/setup-go@v5 # 使用最新的 v5 版本
+      with:
+        go-version: '1.24' # 指定 mosdns 需要的最低版本或更新版本
 
+    - name: Clone source code
+      working-directory: /workdir
+      run: |
+        df -hT $PWD
+        git clone $REPO_URL -b $REPO_BRANCH openwrt
+        ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
     - name: Clone source code
       working-directory: /workdir
       run: |
