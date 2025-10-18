@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2019-2020 P3TERX <https://p3terx.com>
+# Copyright (c) 2019-2024 P3TERX <https://p3terx.com>
 #
 # This is free software, licensed under the MIT License.
 # See /LICENSE for more information.
@@ -8,15 +8,13 @@
 # Description: Build OpenWrt using GitHub Actions
 #
 
-name: mt798x-6.6
+name: AX6000_ImmortalWrt_mt798x-6.6
+
 on:
   repository_dispatch:
   workflow_dispatch:
-    inputs:
-      ssh:
-        description: 'SSH connection to Actions'
-        required: false
-        default: 'false'
+  # schedule:
+  #   - cron: 0 8 * * 5
 
 env:
   REPO_URL: https://github.com/padavanonly/immortalwrt-mt798x-6.6
@@ -38,6 +36,8 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@main
+      with:
+        repository: Mo-chong/redmi-ax6000
 
     - name: Initialization environment
       env:
@@ -60,31 +60,41 @@ jobs:
         sudo mkdir -p /workdir
         sudo chown $USER:$GROUPS /workdir
 
-    - name: Clone source code
+    - name: Clone source code # 克隆源码步骤已修改
       working-directory: /workdir
       run: |
         df -hT $PWD
-        git clone $REPO_URL -b $REPO_BRANCH openwrt
+        git clone $REPO_URL openwrt
+        cd openwrt
+        # --- 使用指定的旧 Commit ---
+        git checkout 16b5fc26061aca97d56e4d4381795f95a2521c9c
+        # ---------------------------
+        cd ..
         ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
 
-    # 【6.6 缓存 - 最终修正版】
-    - name: Cache build directories (6.6)
+    - name: Load Cache # 缓存步骤
       uses: actions/cache@v4
+      env:
+        cache-name: Linux-openwrt-cache
       with:
         path: |
           /workdir/openwrt/dl
           /workdir/openwrt/staging_dir
-        key: ${{ runner.os }}-openwrt-6.6-${{ hashFiles(env.CONFIG_FILE, env.FEEDS_CONF) }}
+        key: Linux-openwrt-6.6-${{ hashFiles('**/mt798x-6.6.config', '**/feeds.conf.default') }}
         restore-keys: |
-          ${{ runner.os }}-openwrt-6.6-
+          Linux-openwrt-6.6-
 
-    - name: Update feeds
+    - name: Update feeds # 更新 Feeds
       run: |
-          cd openwrt
-          ./scripts/feeds update -a 
+        cd openwrt
+        ./scripts/feeds update -a 
 
+    - name: Install feeds # 安装 Feeds
+      run: |
+        cd openwrt
+        ./scripts/feeds install -a
 
-    - name: Load custom configuration
+    - name: Load custom configuration # 加载自定义配置和脚本
       run: |
         [ -e files ] && mv files openwrt/files
         [ -e $CONFIG_FILE ] && mv $CONFIG_FILE openwrt/.config
@@ -92,61 +102,42 @@ jobs:
         cd openwrt
         $GITHUB_WORKSPACE/$DIY_P1_SH    
 
-    - name: Install feeds
+    - name: Load custom configuration # 再次确认安装 feeds (有时 DIY 脚本会添加新的)
       run: |
         cd openwrt && ./scripts/feeds install -a
-        
-        
-    - name: Load custom feeds
+
+    - name: Load custom configuration # 加载自定义配置和脚本 Part 2
       run: |
         [ -e $FEEDS_CONF ] && mv $FEEDS_CONF openwrt/feeds.conf.default
         chmod +x $DIY_P2_SH
         cd openwrt
         $GITHUB_WORKSPACE/$DIY_P2_SH
 
-
-    - name: SSH connection to Actions
-      uses: P3TERX/ssh2actions@v1.0.0
-      if: (github.event.inputs.ssh == 'true' && github.event.inputs.ssh  != 'false') || contains(github.event.action, 'ssh')
-      env:
-        TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-
-    - name: Download package
+    - name: Download package # 下载依赖包
       id: package
       run: |
         cd openwrt
         make defconfig
         make download -j8
-        make target/linux/prepare V=s # 尝试添加这行
         find dl -size -1024c -exec ls -l {} \;
         find dl -size -1024c -exec rm -f {} \;
 
-    - name: Compile the firmware
+    - name: Compile the firmware # 编译固件 (确认使用多线程)
       id: compile
       run: |
         cd openwrt
         echo -e "$(nproc) thread compile"
-        # 下面这行是修改后的命令，强制单线程并输出详细日志
-        make -j1 V=s
+        make -j$(nproc) || make -j8 || make -j8 V=s # <--- 这里是多线程编译命令
         echo "status=success" >> $GITHUB_OUTPUT
         grep '^CONFIG_TARGET.*DEVICE.*=y' .config | sed -r 's/.*DEVICE_(.*)=y/\1/' > DEVICE_NAME
         [ -s DEVICE_NAME ] && echo "DEVICE_NAME=_$(cat DEVICE_NAME)" >> $GITHUB_ENV
         echo "FILE_DATE=_$(date +"%Y%m%d%H%M")" >> $GITHUB_ENV
 
-
-    - name: Check space usage
+    - name: Check space usage # 检查空间使用情况
       if: (!cancelled())
       run: df -hT
 
-    - name: Upload bin directory
-      uses: actions/upload-artifact@main
-      if: steps.compile.outputs.status == 'success' && env.UPLOAD_BIN_DIR == 'true'
-      with:
-        name: OpenWrt_bin${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
-        path: openwrt/bin
-
-    - name: Organize files
+    - name: Organize files # 整理文件
       id: organize
       if: env.UPLOAD_FIRMWARE == 'true' && !cancelled()
       run: |
@@ -155,43 +146,48 @@ jobs:
         echo "FIRMWARE=$PWD" >> $GITHUB_ENV
         echo "status=success" >> $GITHUB_OUTPUT
 
-    - name: Upload firmware directory
+    - name: Upload firmware directory # 上传固件目录 Artifact
       uses: actions/upload-artifact@main
       if: steps.organize.outputs.status == 'success' && !cancelled()
       with:
         name: OpenWrt_firmware${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
         path: ${{ env.FIRMWARE }}
 
-    - name: Generate release tag
+    - name: Generate release tag # 生成 Release 标签
       id: tag
       if: env.UPLOAD_RELEASE == 'true' && !cancelled()
       run: |
         echo "release_tag=$(date +"%Y.%m.%d-%H%M")" >> $GITHUB_OUTPUT
-        touch cmcc-rax3000m-PASSWALL-adguard-smartDNS.txt
-        [ ${UPLOAD_GOFILE} = true && ${{ steps.gofile.outputs.url }} ] && echo "🔗 [GoFile](${{ steps.gofile.outputs.url }})" >> release.txt
+        # 保持你原来的文件名格式
+        touch cmcc-rax3000m-PASSWALL-adguard-smartDNS.txt 
+        # 可选：如果需要添加 GoFile 链接 (但你需要确保 UPLOAD_GOFILE=true 且相关上传步骤存在)
+        # [ ${UPLOAD_GOFILE} = true ] && echo "🔗 [GoFile](...)" >> release.txt 
         echo "status=success" >> $GITHUB_OUTPUT
 
-    - name: Upload firmware to release
+    - name: Upload firmware to release # 上传固件到 Release
       uses: softprops/action-gh-release@v2
       if: steps.tag.outputs.status == 'success' && !cancelled()
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         tag_name: ${{ steps.tag.outputs.release_tag }}
-        body_path: cmcc-rax3000m-PASSWALL-adguard-smartDNS.txt
+        body_path: cmcc-rax3000m-PASSWALL-adguard-smartDNS.txt # 使用你生成的文件名
         files: ${{ env.FIRMWARE }}/*
+        overwrite_files: true # 允许覆盖同名文件
 
-    - name: Delete workflow runs
+    - name: Delete workflow runs # 删除旧的 Workflow Runs
       uses: Mattraks/delete-workflow-runs@main
       with:
-        retain_days: 0
-        keep_minimum_runs: 2
+        token: ${{ secrets.GITHUB_TOKEN }}
+        repository: ${{ github.repository }}
+        retain_days: 1
+        keep_minimum_runs: 3
 
-    - name: Remove old Releases
+    - name: Remove old releases # 删除旧的 Releases
       uses: dev-drprasad/delete-older-releases@master
       if: env.UPLOAD_RELEASE == 'true' && !cancelled()
       with:
-        keep_latest: 12
-        delete_tags: true
+        keep_latest: 12 # 保留最新的 12 个 Release
+        delete_tags: true # 同时删除 Tag
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
