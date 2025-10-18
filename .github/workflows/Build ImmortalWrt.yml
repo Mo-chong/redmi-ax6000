@@ -67,28 +67,36 @@ jobs:
         git clone $REPO_URL -b $REPO_BRANCH openwrt
         ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
 
+    # 【6.1 缓存 - 最终修正版】
+    - name: Cache build directories (6.1)
+      uses: actions/cache@v4
+      with:
+        path: |
+          /workdir/openwrt/dl
+          /workdir/openwrt/staging_dir
+        key: ${{ runner.os }}-openwrt-6.1-${{ hashFiles(env.CONFIG_FILE, env.FEEDS_CONF) }}
+        restore-keys: |
+          ${{ runner.os }}-openwrt-6.1-
 
     - name: Update feeds
       run: |
-         cd openwrt
-         ./scripts/feeds update -a 
+          cd openwrt
+          ./scripts/feeds update -a 
 
 
- 
     - name: Load custom configuration
       run: |
         [ -e files ] && mv files openwrt/files
         [ -e $CONFIG_FILE ] && mv $CONFIG_FILE openwrt/.config
         chmod +x $DIY_P1_SH
         cd openwrt
-        $GITHUB_WORKSPACE/$DIY_P1_SH   
-    
+        $GITHUB_WORKSPACE/$DIY_P1_SH    
 
     - name: Install feeds
       run: |
         cd openwrt && ./scripts/feeds install -a
         
-         
+        
     - name: Load custom feeds
       run: |
         [ -e $FEEDS_CONF ] && mv $FEEDS_CONF openwrt/feeds.conf.default
@@ -96,17 +104,6 @@ jobs:
         cd openwrt
         $GITHUB_WORKSPACE/$DIY_P2_SH
 
-    # 【6.1 的最终修正版本】
-    - name: Cache build directories (6.1)
-      uses: actions/cache@v4
-      with:
-        path: |
-          /workdir/openwrt/dl
-          /workdir/openwrt/staging_dir
-        # 【修正】使用相对路径 'openwrt/' 和 '6.1' 标签
-        key: ${{ runner.os }}-openwrt-6.1-${{ hashFiles('openwrt/.config', 'openwrt/feeds.conf.default') }}
-        restore-keys: |
-          ${{ runner.os }}-openwrt-6.1-
 
     - name: SSH connection to Actions
       uses: P3TERX/ssh2actions@v1.0.0
