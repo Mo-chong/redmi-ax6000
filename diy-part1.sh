@@ -108,3 +108,6 @@ https://uu.163.com
 
 @@
 ' >> feeds/packages.index
+# Add kenzok8's feed source
+echo 'src-git kenzo https://github.com/kenzok8/openwrt-packages' >>feeds.conf.default
+echo 'src-git small https://github.com/kenzok8/small' >>feeds.conf.default
