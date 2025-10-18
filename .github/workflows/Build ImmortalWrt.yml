@@ -82,6 +82,17 @@ jobs:
         chmod +x $DIY_P1_SH
         cd openwrt
         $GITHUB_WORKSPACE/$DIY_P1_SH   
+    # 【为 6.1 添加的缓存】
+    - name: Cache build directories (6.1)
+      uses: actions/cache@v4
+      with:
+        path: |
+          /workdir/openwrt/dl
+          /workdir/openwrt/staging_dir
+        # 注意这里的 key 包含了 "6.1" 标签，和 6.6 的 key 完全不同
+        key: ${{ runner.os }}-openwrt-6.1-${{ hashFiles('/workdir/openwrt/.config', '/workdir/openwrt/feeds.conf.default') }}
+        restore-keys: |
+          ${{ runner.os }}-openwrt-6.1-
 
     - name: Install feeds
       run: |
